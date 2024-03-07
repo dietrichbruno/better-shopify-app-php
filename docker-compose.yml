@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  php-fpm:
+    build: .docker/php
+    container_name: "template-php"
+    entrypoint: .docker/entrypoint.sh
+    environment:
+      - COMPOSER_MEMORY_LIMIT=2G
+      - ENVIRONMENT=local
+    volumes:
+      - .:/var/www
+    networks:
+      - template-network
+    user: "1000:www-data"
+
+  nginx:
+    build: .docker/nginx
+    container_name: "template-nginx"
+    restart: always
+    ports:
+      - "64999:80"
+    volumes:
+      - .:/var/www
+    networks:
+      - template-network
+    depends_on:
+      - php-fpm
+
+  mysql:
+    build: .docker/mysql
+    command: --innodb-use-native-aio=0 --default-authentication-plugin=mysql_native_password
+    container_name: template-mysql
+    platform: linux/amd64
+    restart: always
+    ports:
+      - "3394:3306"
+    volumes:
+      - ./.docker/mysql/dbdata:/var/lib/mysql
+      - ./.docker/mysql/scripts:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - template-network
+
+  redis:
+    build: .docker/redis
+    container_name: template-redis
+    ports:
+      - "6396:6379"
+    networks:
+      - template-network
+
+networks:
+  template-network:
+    driver: bridge
